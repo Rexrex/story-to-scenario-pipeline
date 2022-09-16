@@ -257,7 +257,7 @@ def translate(events, originalText):
     index = 0
     for event in events:
 
-        if (type(event.target) != type(predpatt_output_handler.Event(initiator="default", action="default", target= "default", frames=""))):
+        if (event.target.type != "complex"):
             eventHandler(event, originalText[index])
         else:
             complexEventHandler(event, originalText[index])

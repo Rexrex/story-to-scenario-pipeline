@@ -5,7 +5,7 @@ from recordtype import recordtype
 
 nlp = en_core_web_md.load()
 Data = recordtype('Data', 'original pos type', default="")
-Event = recordtype('Event', 'initiator action target frames')
+Event = recordtype('Event', 'initiator action target type frames')
 global events
 events = []
 
@@ -29,85 +29,6 @@ def EventOutputHandler(event, currentIndex):
     # Sometimes PredPatt is dumb and the root of an event is either an Adjective or a Noun
     elif core.root.tag == 'ADJ' or core.root.tag == 'NOUN':
         return ComputeCoreAdjNoun(core, currentIndex, event)
-
-
-
-#Compute complex events  example: "Peter loves going to the park"
-def ComputeComplexEvent(core, event, mainInitiator, mainAction, mainTarget, mainLocation):
-    secondaryInitiator = ""
-    secondaryAction = ""
-    secondaryTarget = ""
-    secondaryLocation = ""
-    complements = ""
-    print("Event: " + str(event))
-    for i in event.instances[1:]:
-        for arg in i.arguments:
-
-            if (arg.root.gov_rel == 'nsubj'):
-                agentText = arg.root.text
-                secondaryInitiator = Data(original=agentText, pos=arg.root.tag, type='initiator',
-                                          length=len(agentText.split(' ')))
-
-            elif (arg.root.gov_rel == 'obl'):
-                locationText = arg.root.text
-                secondaryLocation = Data(original=locationText, pos=arg.root.tag, type='location',
-                                         length=len(locationText.split(' ')))
-                if (secondaryTarget == ""):
-                    secondaryTarget = secondaryLocation
-
-            elif arg.root.gov_rel == 'obj':
-                targetText = arg.root.text
-                secondaryTarget = Data(original=targetText, pos=arg.root.tag, type='target',
-                                       length=len(targetText.split(' ')))
-
-        if (i.root.gov_rel == 'root' or i.root.gov_rel == 'conj' or 'comp' in i.root.gov_rel):
-            if (i.root.tag == "ADJ" or i.root.tag == "NOUN"):  # Catching 'is' statements
-                posAction = "VERB"
-                secondaryAction = Data(original="be", pos=posAction, type='root', length=len("be"))
-                secondaryTarget = Data(original=i.root.text, pos=i.root.tag, type='target',
-                                       length=len(i.root.text.split(' ')))
-            else:
-                action = i.root.text
-                doc = nlp(action)
-                action = doc[0].lemma_
-                posAction = i.root.tag
-                for dep in i.root.dependents:
-                    complements += " " + dep.dep.text
-                    complements += " " + i.root.text
-
-                secondaryAction = Data(original=action, pos=posAction, type='root', length=len(i.root.text.split(' ')))
-
-    if secondaryInitiator == '' and secondaryTarget != '':
-        secondaryInitiator = secondaryTarget
-    elif secondaryInitiator == '' and secondaryTarget == '' and secondaryAction != '':
-        secondaryInitiator = secondaryAction
-
-    if (mainTarget == "" and secondaryTarget != ""):
-        mainTarget = Data(original="CONNECTED", pos="comp", type='comp', length=5)
-        eventName = mainInitiator.original + " " + mainAction.original + " " + secondaryAction.original + " " + secondaryTarget.original
-        connectedEvent = Event(initiator=secondaryInitiator, action=secondaryAction, target=secondaryTarget,
-                               location=secondaryLocation, frames="")
-        connectedEventName = eventName
-        addEventToList(mainInitiator, mainAction, mainTarget, mainLocation, connectedEvent, connectedEventName)
-
-    if (mainTarget == "" and secondaryTarget == ""):
-        mainTarget = Data(original="something", pos="comp", type='comp', length=1)
-        secondaryTarget = Data(original="somewhere", pos="noun", type='target',
-                               length=1)
-        eventName = mainInitiator.original + " " + mainAction.original + " " + secondaryAction.original + " " + secondaryTarget.original
-        connectedEvent = Event(initiator=secondaryInitiator, action=secondaryAction, target=secondaryTarget,
-                               location=secondaryLocation, frames="")
-        connectedEventName = eventName
-        addEventToList(mainInitiator, mainAction, mainTarget, mainLocation, connectedEvent, connectedEventName)
-
-
-
-    eventName = mainInitiator.original + " " + mainAction.original + " " + mainTarget.original
-    connectedEvent = Event(initiator=secondaryInitiator, action=secondaryAction, target=secondaryTarget,
-                           location=secondaryLocation, frames="")
-    connectedEventName = eventName
-    addEventToList(mainInitiator, mainAction, mainTarget, mainLocation, connectedEvent, connectedEventName)
-
 
 def ComputeCorePredicate(core, currentIndex, event):
     initiator = ""
@@ -148,15 +69,15 @@ def ComputeCorePredicate(core, currentIndex, event):
         elif 'comp' in arg2.root.gov_rel:
             #complex event
             evenAux =  EventOutputHandler(event, currentIndex+1)
-            return Event(initiator=initiator, action=action, target= evenAux, frames="")
+            return Event(initiator=initiator, action=action, target= evenAux, type="complex", frames="")
 
         else:
             targetText = arg2.root.text
             target = Data(original=targetText, pos=arg2.root.tag, type='unknown')
 
-    return Event(initiator=initiator, action=action, target=target, frames="")
+    return Event(initiator=initiator, action=action, target=target, type="simple", frames="")
 
-def ComputeCoreAdjNoun(core, currentIndex, instances):
+def ComputeCoreAdjNoun(core, currentIndex, event):
     initiator = ""
     action = ""
     target = ""
@@ -178,10 +99,10 @@ def ComputeCoreAdjNoun(core, currentIndex, instances):
             target = Data(original=targetText, pos=arg2.root.tag, type='object')
 
         elif 'comp' in arg2.root.gov_rel:
-            targetText = arg2.root.text
-            target = Data(original=targetText, pos=arg2.root.tag, type='comp')
-
             ## Handle Complex Events
+            evenAux =  EventOutputHandler(event, currentIndex+1)
+            return Event(initiator=initiator, action=action, target= evenAux, type="complex", frames="")
+
 
         else:
             targetText = arg2.root.text

@@ -88,7 +88,9 @@ def computeOutput(output):
         e.frames = getFrames(word, pos)
 
         # This is kinda hammered in but I need a way to check its a normal target or a composed event
-        while(type(e.target) == type(predpatt_output_handler.Event(initiator="default", action="default", target= "default", frames=""))):
+        #while(type(e.target) == type(predpatt_output_handler.Event(initiator="default", action="default", target= "default", frames=""))):
+
+        while(e.target.type == "complex"):
             e = e.target
             word = e.action.original
             pos = e.action.pos
