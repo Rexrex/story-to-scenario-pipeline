@@ -11,8 +11,6 @@ import en_core_web_md
 from Pipeline.Repo import predpatt_output_handler
 
 # Initializing every tool we are going to use
-Data = recordtype('Data', 'original pos type length', default="")
-Event = recordtype('Event', 'initiator action target location frames')
 framenetData = main.main(
     "../../FramenetData/framenetMaster/fndata-1.7/fndata-1.7/")
 framenetFrames = framenetData[0]
@@ -82,18 +80,22 @@ def computeOutput(output):
     ## -------Framenet ---------------------##
     start_time2 = time.time()
     index = 0
-    for event in events.values():
-        index = 0
-        while index < len(event):
+    for e in events:
 
-            if (len(event[index]) < 1):
-                continue
+        # Check for the frames by getting the main verb of a sentence
+        word = e.action.original
+        pos = e.action.pos
+        e.frames = getFrames(word, pos)
 
-            # Check for the frames by getting the main verb of a sentence
-            word = event[index].action.original
-            type = event[index].action.pos
-            event[index].frames = getFrames(word, type)
-            index += 1
+        # This is kinda hammered in but I need a way to check its a normal target or a composed event
+        while(type(e.target) == type(predpatt_output_handler.Event(initiator="default", action="default", target= "default", frames=""))):
+            e = e.target
+            word = e.action.original
+            pos = e.action.pos
+            e.frames = getFrames(word, pos)
+
+
+
 
     frameTime = round(time.time() - start_time2, 2)
     # print("----Framenet  %s seconds ---" % frameTime)
@@ -155,12 +157,13 @@ def computeText(text, useGpt=False):
     EE.extract(text)
     output = EE.predpatt_output
     events = computeOutput(output)
+    print("Event Output: " + str(events))
     text = text.split('.')
     originalText = []
     for e in events:
-        similarityIndex = getEventIndex(e, text)
+        eventName = str(e.initiator.original) + " " + str(e.action.original)
+        similarityIndex = getEventIndex(eventName, text)
         originalText.append(text[similarityIndex])
-
     result = iva_scenario_translator.translate(events, originalText)
     return result
 

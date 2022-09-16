@@ -8,7 +8,7 @@
 
 from recordtype import recordtype
 
-from Pipeline.Repo import iva_information_extractor
+from Pipeline.Repo import predpatt_output_handler
 from Pipeline.WordLabeler import FindHypernym
 from Pipeline.AppraisalLabeler import IdentifyEmotion
 from Pipeline.AppraisalLabeler import TranslateIntoOCCEmotion
@@ -75,8 +75,7 @@ def addDomainAgent(agent):
 
 # Adds all the initiators from the event list to the domain Knowledge as agents
 def loadAgents(events):
-    for event in events.values():
-        for e in event:
+        for e in events:
             if e.initiator.original not in domainKnowledge["Agents"].keys():
                 addDomainAgent(e.initiator.original)
 
@@ -252,29 +251,16 @@ def eventHandler(event, originalText):
 
 
 # Main translator function that calls the event handler and tries to translate each event
-def translate(_events, originalText):
+def translate(events, originalText):
     print("-------Translator-------")
-
-    loadAgents(_events)
+    loadAgents(events)
     index = 0
-    vals = _events.values()
-    for key in _events.keys():
-        event = _events[key]
+    for event in events:
 
-        if(len(event) > 1):
-            complexEventHandler(event, originalText[index])
-            index += 1
-            continue
+        if (type(event.target) != type(predpatt_output_handler.Event(initiator="default", action="default", target= "default", frames=""))):
+            eventHandler(event, originalText[index])
         else:
-
-            e = event[0]
-
-            #If there are no frames we will have to deal with it
-            if (not e.frames):
-                continue
-
-            eventHandler(e, originalText[index])
-            index += 1
-
+            complexEventHandler(event, originalText[index])
+        index+= 1
     printResults()
     return domainKnowledge
