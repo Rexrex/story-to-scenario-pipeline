@@ -8,16 +8,16 @@ from Pipeline.Repo import iva_information_extractor
 
 def main():
 
-    choice = input("Please select \n a) Manually write a story \n b) Pick a story from a file \n")
+    choice = input("Please select \n a) Manually write a story \n b) Pick a story from a file")
 
     if("a" in choice):
 
-        story = input("Please write a short story: \n")
+        story = input("Please write a short story:")
         iva_information_extractor.computeStory(story)
     else:
 
 
-        number = input("Story number?: \n")
+        number = input("Story number?:")
 
         if not isinstance(int(number), int):
             iva_information_extractor.computeStoryFromFile("../../StoryExamples/story7.txt")

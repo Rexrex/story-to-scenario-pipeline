@@ -75,6 +75,7 @@ def computeOutput(output):
     events = {}
     predpatt_output_handler.readPredPattOutput(output)
     events = predpatt_output_handler.events
+    print(events)
     predPattTime = round(time.time() - start_time, 2)
     # print("----PredPatt %s seconds ---" % predPattTime)
 
@@ -125,13 +126,14 @@ def processCoReferences(toProcess, doc):
     return originalText
 
 
+# Computing a story
 def computeStory(story):
     text = ''
     story = story.split('\n')
     text = ''.join(story)
     return computeText(text)
 
-
+# Computing input from a file
 def computeStoryFromFile(storyFilePath):
     with open(storyFilePath) as f:
         toProcess = f.readlines()
@@ -139,7 +141,7 @@ def computeStoryFromFile(storyFilePath):
     text = text.replace("\n", " ")
     return computeText(text)
 
-
+# Main function, runs all analysis
 def computeText(text, useGpt=False):
     EE.clean()
     if useGpt:
@@ -158,7 +160,7 @@ def computeText(text, useGpt=False):
     for e in events:
         similarityIndex = getEventIndex(e, text)
         originalText.append(text[similarityIndex])
-        # print("FINAL: " + str(e) + " " + str(text[similarityIndex]))
+
     result = iva_scenario_translator.translate(events, originalText)
     return result
 

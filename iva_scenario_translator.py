@@ -85,9 +85,8 @@ def loadAgents(events):
 def addGoal(agent, action, target):
     self = domainKnowledge["Agents"][agent.original]
     print(agent.original + " " + action.original)
-    if target.length == 1:
-        addConcept(target.original)
-        self.goals += action.original + "(" + target.original + ")" + "|"
+    addConcept(target.original)
+    self.goals += action.original + "(" + target.original + ")" + "|"
 
 
 # Adds Belief to the initiator agent
@@ -105,64 +104,62 @@ def addBelief(self, initiator, action, target):
             addEmotion(self, action, target)
             return
 
-    if target.length == 1:
+
         addConcept(target.original)
         agent.beliefs += action.original + "(" + initiator.original + "," + target.original + ")=True|"
-    elif target.length > 1:
-        if self.original in target.original:
-            targetAux = target.original.replace(self.original, '')
-        else:
-            targetAux = target.original
+        return
+
+    if self.original in target.original:
+        targetAux = target.original.replace(self.original, '')
         agent.beliefs += action.original + "(" + targetAux + ")=" + initiator.original + "|"
+    else:
+        targetAux = target.original
+        agent.beliefs += action.original + "(" + targetAux + ")=" + initiator.original + "|"
+
 
 def addPossession(self, target):
     agent = domainKnowledge["Agents"][self.original]
     quantity = 1
-    if target.length == 1:
-        addConcept(target.original)
-        agent.beliefs += "has(" + target.original + ")=" + str(quantity) + "|"
+    addConcept(target.original)
+    agent.beliefs += "has(" + target.original + ")=" + str(quantity) + "|"
 
 
 def addEmotion(self, emotion, target):
     agent = domainKnowledge["Agents"][self.original]
     value = 5
-    if target.length == 1:
-        addConcept(target.original)
-        occEmotion = TranslateIntoOCCEmotion(emotion.original)
-        agent.emotions += occEmotion + "(" + target.original + ")=" + str(value) + "|"
+    addConcept(target.original)
+    occEmotion = TranslateIntoOCCEmotion(emotion.original)
+    agent.emotions += occEmotion + "(" + target.original + ")=" + str(value) + "|"
 
 def addStatus(self, initiator, target):
     agent = domainKnowledge["Agents"][self.original]
-    if target.length == 1:
-        addConcept(target.original)
-        agent.status += "is(" + initiator.original + "," + target.original + ")=" + "True|"
+    addConcept(target.original)
+    agent.status += "is(" + initiator.original + "," + target.original + ")=" + "True|"
 
 def addEmotionalRule(initiator, emotion, action, target):
     event_name = initiator.original + " " + emotion.original + " " + action.original + " " + target.original
     if event_name not in domainKnowledge["EmotionalRules"].keys():
-        if target.length == 1:
-            appraisalVariable, value = IdentifyEmotion(emotion.original)
-            print(str(event_name) + str(appraisalVariable) + str(value))
-            domainKnowledge["EmotionalRules"][event_name] = (EmotionRule(event= event_name, initiator=initiator.original, action=action.original,
-                                                                         target=target.original, appraisal_variables=appraisalVariable, values=value))
+        appraisalVariable, value = IdentifyEmotion(emotion.original)
+        print(str(event_name) + str(appraisalVariable) + str(value))
+        domainKnowledge["EmotionalRules"][event_name] = (EmotionRule(event= event_name, initiator=initiator.original, action=action.original,
+                                                                     target=target.original, appraisal_variables=appraisalVariable, values=value))
 
-def addAction(action, target, location='default'):
+def addAction(action, target):
     if action.original not in domainKnowledge["Actions"].keys():
-        if target.length == 1:
-            if(location != 'default' and target.original == ""):
-                domainKnowledge["Actions"][action.original] = (Action(target=location, target_category="location", location=location))
-            else:
-                category = addConcept(target.original)
-                domainKnowledge["Actions"][action.original] = (Action(target=target.original, target_category=category, location=location))
+
+        if(target.type == 'location'):
+            domainKnowledge["Actions"][action.original] = (Action(target=target.original, target_category="location", location=target.original))
+        else:
+            category = addConcept(target.original)
+            domainKnowledge["Actions"][action.original] = (Action(target=target.original, target_category=category, location="*"))
 
 
 def addDialogueAction(target):
     if "Speak" not in domainKnowledge["Actions"].keys():
-        if target.length == 1:
-            if(target.original == ""):
-                domainKnowledge["Actions"]["Speak"] = (Action(target="Agent", target_category="Person",  location="*"))
-            else:
-                domainKnowledge["Actions"]["Speak"] = (Action(target=target.original, target_category="Person", location="*"))
+        if(target.original == ""):
+            domainKnowledge["Actions"]["Speak"] = (Action(target="Agent", target_category="Person",  location="*"))
+        else:
+            domainKnowledge["Actions"]["Speak"] = (Action(target=target.original, target_category="Person", location="*"))
 
 def addDialogue(action, target, text):
     original = text.split(' ')
@@ -204,7 +201,6 @@ def complexEventHandler(event, originalText):
     core_action = event[0].action
     self = event[0].initiator
     core_target = event[0].target
-    location = event[1].location
     #Sub action such as Sarah is cute
     sub_action = event[1].action
     sub_initiator = event[1].initiator
@@ -231,9 +227,6 @@ def eventHandler(event, originalText):
     action = event.action
     initiator = event.initiator
     target = event.target
-    if(target == ""):
-        target = iva-information-extractor.Data(original="something", pos="noun", type='target', length=1)
-    location = event.location
     print(str(action.original) + "  frames:" + str(event_frames))
     # Goal related Event
     if ("require" in event_frames.lower() or "desiring" in event_frames.lower()):
@@ -255,9 +248,6 @@ def eventHandler(event, originalText):
         addDialogue(action, target, originalText)
 
     else:
-        if location != "":
-            addAction(action, target, location.original)
-        else:
             addAction(action, target)
 
 

@@ -4,26 +4,41 @@ from recordtype import recordtype
 
 
 nlp = en_core_web_md.load()
-Data = recordtype('Data', 'original pos type length', default="")
-Event = recordtype('Event', 'initiator action target location frames')
+Data = recordtype('Data', 'original pos type', default="")
+Event = recordtype('Event', 'initiator action target frames')
 global events
 events = {}
 
-def addEventToList(initiator, action, target, location, connectedEvent, connectedEventName):
+def addEventToList(initiator, action, target):
     global events
-    print(str(initiator) + " " + str(action) + " " + str(target))
     if (target != "" and initiator!= ""):
         event = initiator.original + " " + action.original + " " + target.original
-    else:
-        event = initiator.original + " " + action.original + connectedEventName
+
 
     if (event not in events.keys()):
         events[event] = []
-        events[event].append(Event(initiator=initiator, action=action, target=target, location=location, frames=""))
-        if connectedEventName != "":
-            events[event].append(connectedEvent)
-        action = ""
-        target = ""
+        events[event].append(Event(initiator=initiator, action=action, target=target, frames=""))
+
+
+# Read complete analysis to the PredPatt's output
+def readPredPattOutput(output):
+    # trying to extract event from text, all events have an initiator, an action and a target. Additionally they might have a location
+    for event in output:
+        for core in event.instances:  # Is is a complex event?
+            # If core is a verb we can assume stuff
+            if core.root.tag == 'VERB':
+                ComputeCorePredicate(core, event)
+                continue
+            # Sometimes PredPatt is dumb and the root of an event is either an Adjective or a Noun
+            elif core.root.tag == 'ADJ' or core.root.tag == 'NOUN':
+                ComputeCoreAdjNoun(core)
+                continue
+
+
+
+
+
+
 
 
 
@@ -106,96 +121,98 @@ def ComputeComplexEvent(core, event, mainInitiator, mainAction, mainTarget, main
 
 def ComputeCorePredicate(core, event):
     initiator = ""
-    action = ""
-    target = ""
-    location = ""
-    connectedEvent = ""
-    connectedEventName = ""
     root = core.root.text
     doc = nlp(root)
     root = doc[0].lemma_
-    complex = False
-    action = Data(original=root, pos=core.root.tag, type='root', length=len(root.split(' ')))
+    complex = (len(event.instances) > 1)
 
-    for arg in core.arguments:
+    # John goes to the movies
+    # root: goes
+    # Arguments: John | movies
+    # How to handle basic cases: Start with the root
 
-        if (arg.root.gov_rel == 'nsubj'):
-            agentText = arg.root.text
-            initiator = Data(original=agentText, pos=arg.root.tag, type='initiator', length=len(agentText.split(' ')))
+    action = Data(original=root, pos=core.root.tag, type='root')
 
-        elif (arg.root.gov_rel == 'obl'):
-            locationText = arg.root.text
-            location = Data(original=locationText, pos=arg.root.tag, type='location',
-                            length=len(locationText.split(' ')))
-            if target == "":
-                target = location
+    # What happens when there is only one argument
+    if(len(core.arguments) == 1):
+        arg1 = core.arguments[0]
+        initatorText = arg1.root.text
+        initiator = Data(original=initatorText, pos=arg1.root.tag, type='initiator')
+        target = Data(original="something", pos="NOUN", type='target')
+        addEventToList(initiator, action, target)
 
-        elif arg.root.gov_rel == 'obj':
-            targetText = arg.root.text
-            target = Data(original=targetText, pos=arg.root.tag, type='target', length=len(targetText.split(' ')))
 
-        elif 'comp' in arg.root.gov_rel:
-            complex = True
-            ComputeComplexEvent(core, event, initiator, action, target, location)
-            # aux[index - 1] += "CCOMP[" + str(index) + "]"
-    if not complex:
-        ## lets make sure nothing is missing
+    elif(len(core.arguments) == 2):
 
-        if initiator == '' and target != '':
-            initiator = target
+        arg1 = core.arguments[0]
+        arg2 = core.arguments[1]
 
-        addEventToList(initiator, action, target, location, connectedEvent, connectedEventName)
+        if (arg1.root.gov_rel == 'nsubj'):
+            agentText = arg1.root.text
+            initiator = Data(original=agentText, pos=arg1.root.tag, type='initiator')
+
+
+        # OBL is a location
+        if (arg2.root.gov_rel == 'obl'):
+            targetText = arg2.root.text
+            target = Data(original=targetText, pos=arg2.root.tag, type='location')
+
+        # OBJ is a noun
+        elif arg2.root.gov_rel == 'obj':
+            targetText = arg2.root.text
+            target = Data(original=targetText, pos=arg2.root.tag, type='object')
+
+        elif 'comp' in arg2.root.gov_rel:
+            targetText = arg2.root.text
+            target = Data(original=targetText, pos=arg2.root.tag, type='comp')
+
+            ## Handle Complex Events
+
+        else:
+            targetText = arg2.root.text
+            target = Data(original=targetText, pos=arg2.root.tag, type='unknown')
+
+
+
+        addEventToList(initiator, action, target)
 
 
 def ComputeCoreAdjNoun(core):
     initiator = ""
     action = ""
     target = ""
-    location = ""
+    root = core.root.text
     # How do we separate "is angry at John" and "Sarah is cute" let's go for the amount of arguments
     if len(core.arguments) == 2:
         action = core.root.text
-        initiator = core.arguments[0].root.text
-        target = core.arguments[1].root.text
-        action = Data(original=action, pos=core.root.tag, type='root', length=1)
-        initiator = Data(original=initiator, pos=core.arguments[0].root.tag, type='initiator',
-                         length=len(initiator.split(' ')))
-        target = Data(original=target, pos=core.arguments[1].root.tag, type='target', length=len(target.split(' ')))
+        initiatorName = core.arguments[0].root.text
+        targetName = core.arguments[1].root.text
+        action = Data(original=action, pos=core.root.tag, type='root')
+        initiator = Data(original=initiatorName, pos=core.arguments[0].root.tag, type='initiator')
+        target = Data(original=targetName, pos=core.arguments[1].root.tag, type='target')
 
-    elif len(core.arguments) == 1:
+    elif core.root.tag != 'VERB':
         root = "be"
-        action = Data(original=root, pos='VERB', type='root', length=1)
+        action = Data(original=root, pos='VERB', type='root')
 
         targetText = core.root.text
-        target = Data(original=targetText, pos=core.root.tag, type='target', length=len(targetText.split(' ')))
+        target = Data(original=targetText, pos=core.root.tag, type='target')
 
         #how to find the initiator:
         for arg in core.arguments:
             if (arg.root.gov_rel == 'nsubj'):
                 agentText = arg.root.text
-                initiator = Data(original=agentText, pos=arg.root.tag, type='initiator',
-                                 length=len(agentText.split(' ')))
+                initiator = Data(original=agentText, pos=arg.root.tag, type='initiator')
 
         # If there is still no initiator we have to go deeper
         if "" == initiator:
             for dep in core.arguments[0].root.dependents:
                 if (arg.root.gov_rel == 'nsubj'):
                     agentText = arg.root.text
-                    initiator = Data(original=agentText, pos=arg.root.tag, type='initiator',
-                                     length=len(agentText.split(' ')))
+                    initiator = Data(original=agentText, pos=arg.root.tag, type='initiator')
 
     if(initiator != ""):
-        addEventToList(initiator, action, target, "", "", "")
+        addEventToList(initiator, action, target)
 
 
-# Read complete analysis to the PredPatt's output
-def readPredPattOutput(output):
-    # trying to extract event from text, all events have an initiator, an action and a target. Additionally they might have a location
-    for event in output:
-        for core in event.instances:  # Is is a complex event?
-            # If core is a verb we can assume stuff
-            if core.root.tag == 'VERB':
-                ComputeCorePredicate(core, event)
-            # Sometimes PredPatt is dumb and the root of an event is either an Adjective or a Noun
-            elif core.root.tag == 'ADJ' or core.root.tag == 'NOUN':
-                ComputeCoreAdjNoun(core)
+
