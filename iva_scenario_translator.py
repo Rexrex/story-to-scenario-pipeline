@@ -49,7 +49,7 @@ def printResults():
     print("-------------------------------------------------------")
     print("Emotional Rules:")
     for c in domainKnowledge["EmotionalRules"].keys():
-        print(str(c) + " emotion:" + str(domainKnowledge["EmotionalRules"][c].event) + " initiator:"
+        print(str(c) + " initiator:"
               + str(domainKnowledge["EmotionalRules"][c].initiator) + " action:" + str(domainKnowledge["EmotionalRules"][c].action)
               + " target:" + str(domainKnowledge["EmotionalRules"][c].target + " appraisal-variable:"
                                  + str(domainKnowledge["EmotionalRules"][c].appraisal_variables) + " values:" + str(domainKnowledge["EmotionalRules"][c].values)))
@@ -84,7 +84,11 @@ def loadAgents(events):
 def addGoal(agent, action, target):
     self = domainKnowledge["Agents"][agent.original]
     print(agent.original + " " + action.original)
-    addConcept(target.original)
+    if target.original != 'something':
+        addConcept(target.original)
+    elif action.original == 'go':
+        target.original = "somewhere"
+
     self.goals += action.original + "(" + target.original + ")" + "|"
 
 
@@ -146,11 +150,18 @@ def addEmotionalRule(initiator, emotion, action, target):
 def addAction(action, target):
     if action.original not in domainKnowledge["Actions"].keys():
 
+
         if(target.type == 'location'):
             domainKnowledge["Actions"][action.original] = (Action(target=target.original, target_category="location", location=target.original))
         else:
-            category = addConcept(target.original)
-            domainKnowledge["Actions"][action.original] = (Action(target=target.original, target_category=category, location="*"))
+            if target.original != 'something':
+                category = addConcept(target.original)
+                domainKnowledge["Actions"][action.original] = (Action(target=target.original, target_category=category, location="*"))
+            elif action.original == 'go':
+                target.original = "somewhere"
+                category = "location"
+                domainKnowledge["Actions"][action.original] = (Action(target=target.original, target_category="location", location="somewhere"))
+
 
 
 def addDialogueAction(target):
@@ -160,7 +171,7 @@ def addDialogueAction(target):
         else:
             domainKnowledge["Actions"]["Speak"] = (Action(target=target.original, target_category="Person", location="*"))
 
-def addDialogue(action, target, text):
+def addDialogue(action, target, text, dialogue):
     original = text.split(' ')
     index = 0
 
@@ -170,7 +181,7 @@ def addDialogue(action, target, text):
 
     dialogue = original[index:]
 
-    if len(dialogue) < 2 :
+    if len(dialogue[0]) < 2:
         return
 
     actualDialogue = ""
@@ -196,14 +207,16 @@ def addConcept(concept, save=True):
 # Dealing with complex events such as 'John thinks Sarah is cute'
 def complexEventHandler(event, originalText):
     # Main action such as John thinks
-    event_frames = event[0].frames
-    core_action = event[0].action
-    self = event[0].initiator
-    core_target = event[0].target
+    event_frames = event.frames
+    core_action = event.action
+    self = event.initiator
     #Sub action such as Sarah is cute
-    sub_action = event[1].action
-    sub_initiator = event[1].initiator
-    sub_target = event[1].target
+    sub_action = event.target.action
+    sub_initiator = event.target.initiator
+    sub_target = event.target.target
+    aux = event.aux
+
+
 
     if ("require" in event_frames.lower() or "desiring" in event_frames.lower()):
         addGoal(self, sub_action, sub_target)
@@ -216,7 +229,7 @@ def complexEventHandler(event, originalText):
             addEmotionalRule(self, core_action, sub_action, sub_target)
 
     elif ("Speak" in event_frames or "Questioning" in event_frames  or "Communication" in event_frames):
-        addDialogue(sub_action, sub_target, originalText)
+        addDialogue(sub_action, sub_target, originalText, aux)
 
 
 # Dealing with simple events such as 'John goes to the beach'
@@ -226,6 +239,7 @@ def eventHandler(event, originalText):
     action = event.action
     initiator = event.initiator
     target = event.target
+    aux = event.aux
     print(str(action.original) + "  frames:" + str(event_frames))
     # Goal related Event
     if ("require" in event_frames.lower() or "desiring" in event_frames.lower()):
@@ -244,7 +258,7 @@ def eventHandler(event, originalText):
         addStatus(initiator, initiator, target)
 
     elif ("Speak" in event_frames or "Questioning" in event_frames  or "Communication" in event_frames):
-        addDialogue(action, target, originalText)
+        addDialogue(action, target, originalText, aux)
 
     else:
             addAction(action, target)
@@ -257,7 +271,7 @@ def translate(events, originalText):
     index = 0
     for event in events:
 
-        if (event.target.type != "complex"):
+        if (event.type != "complex"):
             eventHandler(event, originalText[index])
         else:
             complexEventHandler(event, originalText[index])
