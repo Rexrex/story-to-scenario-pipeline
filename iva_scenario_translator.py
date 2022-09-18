@@ -143,14 +143,13 @@ def addEmotionalRule(initiator, emotion, action, target):
     event_name = initiator.original + " " + emotion.original + " " + action.original + " " + target.original
     if event_name not in domainKnowledge["EmotionalRules"].keys():
         appraisalVariable, value = IdentifyEmotion(emotion.original)
-        print(str(event_name) + str(appraisalVariable) + str(value))
+        #print(str(event_name) + str(appraisalVariable) + str(value))
         domainKnowledge["EmotionalRules"][event_name] = (EmotionRule(event= event_name, initiator=initiator.original, action=action.original,
                                                                      target=target.original, appraisal_variables=appraisalVariable, values=value))
 
 def addAction(action, target):
+    print("Action:" + str(action))
     if action.original not in domainKnowledge["Actions"].keys():
-
-
         if(target.type == 'location'):
             domainKnowledge["Actions"][action.original] = (Action(target=target.original, target_category="location", location=target.original))
         else:
@@ -175,11 +174,14 @@ def addDialogue(action, target, text, dialogue):
     original = text.split(' ')
     index = 0
 
-    while(target.original not in original[index]):
+    while(target.original not in original[index] and index < len(original) - 1):
         index += 1
     index+=1
 
-    dialogue = original[index:]
+    if(index < len(original)):
+        dialogue = original[index:]
+    else:
+        dialogue = original[index - 1:]
 
     if len(dialogue[0]) < 2:
         return
@@ -225,6 +227,8 @@ def complexEventHandler(event, originalText):
         if(self != sub_initiator):
             addBelief(self, sub_initiator, sub_action, sub_target)
         else:
+            if(sub_action == ""):
+                return
             addAction(sub_action, sub_target)
             addEmotionalRule(self, core_action, sub_action, sub_target)
 
@@ -240,7 +244,7 @@ def eventHandler(event, originalText):
     initiator = event.initiator
     target = event.target
     aux = event.aux
-    print(str(action.original) + "  frames:" + str(event_frames))
+    #print(str(action.original) + "  frames:" + str(event_frames))
     # Goal related Event
     if ("require" in event_frames.lower() or "desiring" in event_frames.lower()):
         addGoal(initiator, action, target)
