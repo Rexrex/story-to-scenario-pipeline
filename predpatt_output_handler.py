@@ -1,13 +1,12 @@
-
 import en_core_web_md
 from recordtype import recordtype
-
 
 nlp = en_core_web_md.load()
 Data = recordtype('Data', 'original pos type', default="")
 Event = recordtype('Event', 'initiator action target aux type frames')
 global events
 events = []
+
 
 def addEventToList(event):
     global events
@@ -23,13 +22,13 @@ def readPredPattOutput(output):
 
 
 def EventOutputHandler(event, currentIndex):
-
     core = event.instances[currentIndex]
     if core.root.tag == 'VERB':
         return ComputeCorePredicate(core, currentIndex, event)
     # Sometimes PredPatt is dumb and the root of an event is either an Adjective or a Noun
     elif core.root.tag == 'ADJ' or core.root.tag == 'NOUN':
         return ComputeCoreAdjNoun(core, currentIndex, event)
+
 
 def ComputeCorePredicate(core, currentIndex, event):
     initiator = ""
@@ -45,13 +44,13 @@ def ComputeCorePredicate(core, currentIndex, event):
     action = Data(original=root, pos=core.root.tag, type='root')
 
     # What happens when there is only one argument
-    if(len(core.arguments) == 1):
+    if (len(core.arguments) == 1):
         arg1 = core.arguments[0]
         initatorText = arg1.root.text
         initiator = Data(original=initatorText, pos=arg1.root.tag, type='initiator')
         target = Data(original="something", pos="NOUN", type='target')
 
-    elif(len(core.arguments) == 2):
+    elif (len(core.arguments) == 2):
 
         arg1 = core.arguments[0]
         arg2 = core.arguments[1]
@@ -68,11 +67,11 @@ def ComputeCorePredicate(core, currentIndex, event):
             target = Data(original=targetText, pos=arg2.root.tag, type='object')
 
         elif 'comp' in arg2.root.gov_rel:
-            #complex event
-            evenAux =  EventOutputHandler(event, currentIndex+1)
-            return Event(initiator=initiator, action=action, target= evenAux, aux="", type="complex", frames="")
+            # complex event
+            evenAux = EventOutputHandler(event, currentIndex + 1)
+            return Event(initiator=initiator, action=action, target=evenAux, aux="", type="complex", frames="")
 
-    elif(len(core.arguments) == 3):
+    elif (len(core.arguments) == 3):
 
         arg1 = core.arguments[0]
         arg2 = core.arguments[1]
@@ -90,9 +89,9 @@ def ComputeCorePredicate(core, currentIndex, event):
             target = Data(original=targetText, pos=arg2.root.tag, type='object')
 
         elif 'comp' in arg2.root.gov_rel:
-            #complex event
-            evenAux =  EventOutputHandler(event, currentIndex+1)
-            return Event(initiator=initiator, action=action, target= evenAux, aux="", type="complex", frames="")
+            # complex event
+            evenAux = EventOutputHandler(event, currentIndex + 1)
+            return Event(initiator=initiator, action=action, target=evenAux, aux="", type="complex", frames="")
 
         else:
             targetText = arg2.root.text
@@ -101,18 +100,38 @@ def ComputeCorePredicate(core, currentIndex, event):
             aux = Data(original=auxText, pos=arg3.root.tag, type='unknown')
             return Event(initiator=initiator, action=action, target=target, aux=aux, type="simple", frames="")
 
-
     return Event(initiator=initiator, action=action, target=target, aux="", type="simple", frames="")
+
 
 def ComputeCoreAdjNoun(core, currentIndex, event):
     initiator = ""
     action = ""
     target = ""
-    root = core.root.text
     # How do we separate "is angry at John" and "Sarah is cute" let's go for the amount of arguments
+    if len(core.arguments) == 1:
+        root = "be"
+        action = Data(original=root, pos='VERB', type='root')
+
+        targetText = core.root.text
+        target = Data(original=targetText, pos=core.root.tag, type='target')
+
+        # how to find the initiator:
+        for arg in core.arguments:
+            if (arg.root.gov_rel == 'nsubj'):
+                agentText = arg.root.text
+                initiator = Data(original=agentText, pos=arg.root.tag, type='initiator')
+
+        # If there is still no initiator we have to go deeper
+        if "" == initiator:
+            for dep in core.arguments[0].root.dependents:
+                if (arg.root.gov_rel == 'nsubj'):
+                    agentText = arg.root.text
+                    initiator = Data(original=agentText, pos=arg.root.tag, type='initiator')
+
     if len(core.arguments) == 2:
         arg1 = core.arguments[0]
         arg2 = core.arguments[1]
+        action = Data(original=core.root.text, pos=core.root.tag, type='root')
         initiator = Data(original=arg1.root.text, pos=arg1.root.tag, type='initiator')
 
         # OBL is a location
@@ -127,15 +146,15 @@ def ComputeCoreAdjNoun(core, currentIndex, event):
 
         elif 'comp' in arg2.root.gov_rel:
             ## Handle Complex Events
-            evenAux =  EventOutputHandler(event, currentIndex+1)
-            return Event(initiator=initiator, action=action, target= evenAux, aux="", type="complex", frames="")
+            evenAux = EventOutputHandler(event, currentIndex + 1)
+            return Event(initiator=initiator, action=action, target=evenAux, aux="", type="complex", frames="")
 
         else:
             targetText = arg2.root.text
             target = Data(original=targetText, pos=arg2.root.tag, type='unknown')
 
 
-    elif(len(core.arguments) == 3):
+    elif len(core.arguments) == 3:
 
         arg1 = core.arguments[0]
         arg2 = core.arguments[1]
@@ -153,9 +172,9 @@ def ComputeCoreAdjNoun(core, currentIndex, event):
             target = Data(original=targetText, pos=arg2.root.tag, type='object')
 
         elif 'comp' in arg2.root.gov_rel:
-            #complex event
-            evenAux =  EventOutputHandler(event, currentIndex+1)
-            return Event(initiator=initiator, action=action, target= evenAux, aux="", type="complex", frames="")
+            # complex event
+            evenAux = EventOutputHandler(event, currentIndex + 1)
+            return Event(initiator=initiator, action=action, target=evenAux, aux="", type="complex", frames="")
 
         else:
             targetText = arg2.root.text
@@ -165,28 +184,4 @@ def ComputeCoreAdjNoun(core, currentIndex, event):
             aux = Data(original=auxText, pos=arg3.root.tag, type='unknown')
             return Event(initiator=initiator, action=action, target=target, aux=aux, type="simple", frames="")
 
-    elif core.root.tag != 'VERB':
-        root = "be"
-        action = Data(original=root, pos='VERB', type='root')
-
-        targetText = core.root.text
-        target = Data(original=targetText, pos=core.root.tag, type='target')
-
-        #how to find the initiator:
-        for arg in core.arguments:
-            if (arg.root.gov_rel == 'nsubj'):
-                agentText = arg.root.text
-                initiator = Data(original=agentText, pos=arg.root.tag, type='initiator')
-
-        # If there is still no initiator we have to go deeper
-        if "" == initiator:
-            for dep in core.arguments[0].root.dependents:
-                if (arg.root.gov_rel == 'nsubj'):
-                    agentText = arg.root.text
-                    initiator = Data(original=agentText, pos=arg.root.tag, type='initiator')
-
-
     return Event(initiator=initiator, action=action, target=target, aux="", type="simple", frames="")
-
-
-
