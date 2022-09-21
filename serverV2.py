@@ -118,6 +118,12 @@ def HandleStoryComputation(origin, pos_data):
     jsonData[origin] = json_object
 
 
+def HandleDialogues(origin, pos_data):
+
+    dialogueResult  = GPT3Handler.sendDialogue(pos_data)
+
+    dialogData[origin] = dialogueResult
+
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
     def _set_response(self):
@@ -141,25 +147,15 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
           #  self.wfile.write(b"received get request")
 
             if origin in storyData.keys() and storyData[origin] != "" and origin in jsonData.keys() and storyData[origin] != "":
-
-
-               # storyJson = storyData[origin]
-
-              #  domainKnowledge  = iva_information_extractor.computeStory(storyJson)
-                #domainKnowledge  = IExtractor.computeStory("temp.txt")
                 json_object = jsonData.pop(origin)
                 storyData.pop(origin)
                 self.wfile.write(json_object.encode('utf-8'))
 
             elif origin in dialogData.keys() and dialogData[origin] != "":
-
-                dialogJson = dialogData[origin]
-
-                dialogueResult  = GPT3Handler.sendDialogue(dialogJson)
+                dialogResult = dialogData.pop(origin)
                 #json_object = saveToJson(dialogueResult)
-                print("Sending Dialogues" + str(dialogueResult))
-                dialogData.pop(origin)
-                self.wfile.write(dialogueResult.encode('utf-8'))
+                #print("Sending Dialogues" + str(dialogResult))
+                self.wfile.write(dialogResult.encode('utf-8'))
 
         except Exception:
             self.send_error(500, traceback.format_exc())
@@ -198,8 +194,8 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                     x = threading.Thread(target=HandleStoryComputation(origin, post_data), args=(1,))
                     x.start()
                 elif('Dialogues: ' in post_data):
-                    dialogData[origin] = post_data
-
+                    x = threading.Thread(target=HandleDialogues(origin, post_data), args=(1,))
+                    x.start()
 
             self.send_response(200)
             response = 'Hello, world!\n'
