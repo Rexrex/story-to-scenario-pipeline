@@ -84,7 +84,7 @@ def loadAgents(events):
 def addGoal(agent, action, target):
     self = domainKnowledge["Agents"][agent.original]
     print(agent.original + " " + action.original)
-    if target.original != 'something':
+    if target.original != 'something' and target.pos != "PROPN":
         addConcept(target.original)
     elif action.original == 'go':
         target.original = "somewhere"
@@ -123,14 +123,16 @@ def addBelief(self, initiator, action, target):
 def addPossession(self, target):
     agent = domainKnowledge["Agents"][self.original]
     quantity = 1
-    addConcept(target.original)
+    if target.pos != "PROPN":
+        addConcept(target.original)
     agent.beliefs += "has(" + target.original + ")=" + str(quantity) + "|"
 
 
 def addEmotion(self, emotion, target):
     agent = domainKnowledge["Agents"][self.original]
     value = 5
-    addConcept(target.original)
+    if(target.pos != "PROPN"):
+        addConcept(target.original)
     occEmotion = TranslateIntoOCCEmotion(emotion.original)
     agent.emotions += occEmotion + "(" + target.original + ")=" + str(value) + "|"
 
@@ -150,16 +152,21 @@ def addEmotionalRule(initiator, emotion, action, target):
 def addAction(action, target):
     print("Action:" + str(action))
     if action.original not in domainKnowledge["Actions"].keys():
-        if(target.type == 'location'):
-            domainKnowledge["Actions"][action.original] = (Action(target=target.original, target_category="location", location=target.original))
+        if(target.type == 'place'):
+            addConcept(target.original, "place")
+            domainKnowledge["Actions"][action.original] = (Action(target=target.original, target_category="place", location=target.original))
         else:
             if target.original != 'something':
                 category = addConcept(target.original)
                 domainKnowledge["Actions"][action.original] = (Action(target=target.original, target_category=category, location="*"))
             elif action.original == 'go':
                 target.original = "somewhere"
-                category = "location"
-                domainKnowledge["Actions"][action.original] = (Action(target=target.original, target_category="location", location="somewhere"))
+                category = "place"
+                addConcept(target.original)
+                domainKnowledge["Actions"][action.original] = (Action(target=target.original, target_category="place", location="somewhere"))
+    else:
+        if(target.pos != "PROPN"):
+            addConcept(target.original)
 
 
 
@@ -194,17 +201,19 @@ def addDialogue(action, target, text, dialogue):
     addDialogueAction(target)
 
 
-def addConcept(concept, save=True):
+def addConcept(concept, category="", save=True):
     if concept in domainKnowledge["Agents"].keys():
         return "AGENT"
-    if concept not in domainKnowledge["Concepts"].keys():
-        category = FindHypernym(concept)
-        if(save):
-            domainKnowledge["Concepts"][concept] = category
-        return category
-    if(concept in domainKnowledge["Concepts"].keys()):
-        return domainKnowledge["Concepts"][concept]
-
+    if(category==""):
+        if concept not in domainKnowledge["Concepts"].keys():
+            category = FindHypernym(concept)
+            if(save):
+                domainKnowledge["Concepts"][concept] = category
+            return category
+        if(concept in domainKnowledge["Concepts"].keys()):
+            return domainKnowledge["Concepts"][concept]
+    else:
+        domainKnowledge["Concepts"][concept] = category
 
 # Dealing with complex events such as 'John thinks Sarah is cute'
 def complexEventHandler(event, originalText):
@@ -229,8 +238,12 @@ def complexEventHandler(event, originalText):
         else:
             if(sub_action == ""):
                 return
-            addAction(sub_action, sub_target)
-            addEmotionalRule(self, core_action, sub_action, sub_target)
+
+            if(core_action.original == "feel"):
+                addEmotion(self, sub_action, sub_target)
+            else:
+                addAction(sub_action, sub_target)
+                addEmotionalRule(self, core_action, sub_action, sub_target)
 
     elif ("Speak" in event_frames or "Questioning" in event_frames  or "Communication" in event_frames):
         addDialogue(sub_action, sub_target, originalText, aux)

@@ -60,7 +60,7 @@ def ComputeCorePredicate(core, currentIndex, event):
         # OBL is a location
         if (arg2.root.gov_rel == 'obl'):
             targetText = arg2.root.text
-            target = Data(original=targetText, pos=arg2.root.tag, type='location')
+            target = Data(original=targetText, pos=arg2.root.tag, type='place')
         # OBJ is a noun
         elif arg2.root.gov_rel == 'obj':
             targetText = arg2.root.text
@@ -82,7 +82,7 @@ def ComputeCorePredicate(core, currentIndex, event):
         # OBL is a location
         if (arg2.root.gov_rel == 'obl'):
             targetText = arg2.root.text
-            target = Data(original=targetText, pos=arg2.root.tag, type='location')
+            target = Data(original=targetText, pos=arg2.root.tag, type='place')
         # OBJ is a noun
         elif arg2.root.gov_rel == 'obj':
             targetText = arg2.root.text
@@ -137,7 +137,7 @@ def ComputeCoreAdjNoun(core, currentIndex, event):
         # OBL is a location
         if (arg2.root.gov_rel == 'obl'):
             targetText = arg2.root.text
-            target = Data(original=targetText, pos=arg2.root.tag, type='location')
+            target = Data(original=targetText, pos=arg2.root.tag, type='place')
 
         # OBJ is a noun
         elif arg2.root.gov_rel == 'obj':
@@ -165,7 +165,7 @@ def ComputeCoreAdjNoun(core, currentIndex, event):
         # OBL is a location
         if (arg2.root.gov_rel == 'obl'):
             targetText = arg2.root.text
-            target = Data(original=targetText, pos=arg2.root.tag, type='location')
+            target = Data(original=targetText, pos=arg2.root.tag, type='place')
         # OBJ is a noun
         elif arg2.root.gov_rel == 'obj':
             targetText = arg2.root.text
