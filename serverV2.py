@@ -7,6 +7,7 @@
 
 import http.server
 import socketserver
+import threading
 import traceback
 from http.server import BaseHTTPRequestHandler
 import iva_information_extractor
@@ -19,6 +20,7 @@ import socket
 
 storyData = {}
 dialogData = {}
+jsonData = {}
 
 def dict_to_binary(the_dict):
     str = json.dumps(the_dict)
@@ -88,7 +90,9 @@ def saveToJson(domainKnowledge):
 
     for conceptK in domainKnowledge["Concepts"].keys():
         concept = domainKnowledge["Concepts"][conceptK]
-        if len(concept) > 1:
+        if(type(concept) == bool):
+            continue
+        elif len(concept) > 1:
             json_object += "Concept: " + conceptK + "=" + concept + " \n"
 
     json_object += "}\n{"
@@ -100,6 +104,18 @@ def saveToJson(domainKnowledge):
 
     json_object += "}"
     return json_object
+
+
+def HandleStoryComputation(origin, pos_data):
+
+    storyData[origin] = pos_data
+
+    domainKnowledge  = iva_information_extractor.computeStory(pos_data)
+    #domainKnowledge  = IExtractor.computeStory("temp.txt")
+
+    json_object = saveToJson(domainKnowledge)
+
+    jsonData[origin] = json_object
 
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
@@ -124,16 +140,14 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
           #  self.wfile.write(b"received get request")
 
-            if origin in storyData.keys() and storyData[origin] != "":
+            if origin in storyData.keys() and storyData[origin] != "" and origin in jsonData.keys() and storyData[origin] != "":
 
 
-                storyJson = storyData[origin]
+               # storyJson = storyData[origin]
 
-                domainKnowledge  = iva_information_extractor.computeStory(storyJson)
+              #  domainKnowledge  = iva_information_extractor.computeStory(storyJson)
                 #domainKnowledge  = IExtractor.computeStory("temp.txt")
-
-                json_object = saveToJson(domainKnowledge)
-
+                json_object = jsonData.pop(origin)
                 storyData.pop(origin)
                 self.wfile.write(json_object.encode('utf-8'))
 
@@ -179,11 +193,12 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             post_data = post_data.decode("utf-8")
 
             ## Handle Output
-
-            if('Description: ' in post_data):
-                storyData[origin] = post_data
-            elif('Dialogues: ' in post_data):
-                dialogData[origin] = post_data
+            if("Hello" not in post_data):
+                if('Description: ' in post_data):
+                    x = threading.Thread(target=HandleStoryComputation(origin, post_data), args=(1,))
+                    x.start()
+                elif('Dialogues: ' in post_data):
+                    dialogData[origin] = post_data
 
 
             self.send_response(200)

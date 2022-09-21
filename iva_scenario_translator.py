@@ -214,6 +214,7 @@ def addConcept(concept, category="", save=True):
             return domainKnowledge["Concepts"][concept]
     else:
         domainKnowledge["Concepts"][concept] = category
+        return category
 
 # Dealing with complex events such as 'John thinks Sarah is cute'
 def complexEventHandler(event, originalText):
@@ -231,6 +232,7 @@ def complexEventHandler(event, originalText):
 
     if ("require" in event_frames.lower() or "desiring" in event_frames.lower()):
         addGoal(self, sub_action, sub_target)
+        addAction(sub_action, sub_target)
 
     elif ("Experiencer_focus" in event_frames or "opinion" in event_frames.lower()):
         if(self != sub_initiator):

@@ -16,6 +16,8 @@ def addEventToList(event):
 # Read complete analysis to the PredPatt's output
 def readPredPattOutput(output):
     # trying to extract event from text, all events have an initiator, an action and a target. Additionally they might have a location
+    global events
+    events = []
     for event in output:
         if len(event.instances) > 0:
             addEventToList(EventOutputHandler(event, 0))
