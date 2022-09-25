@@ -135,6 +135,9 @@ def computeStory(story):
     text = ''
     story = story.split('\n')
     text = ''.join(story)
+    #cleaning the input
+    text = text.replace("  ", " ")
+    text = text.replace(".", ". ")
     return computeText(text)
 
 # Computing input from a file

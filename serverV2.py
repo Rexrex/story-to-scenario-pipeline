@@ -4,19 +4,20 @@
 # 2021, Manuel Guimarães, Lisbon, Portugal
 # email: manuel.m.guimaraes@tecnico.ulisboa.pt
 #-------------------------------------
-
+import json
+import socket
 import http.server
 import socketserver
 import threading
+import smtplib
 import traceback
 from http.server import BaseHTTPRequestHandler
 import iva_information_extractor
 from Pipeline import GPT3Handler
+import emailHandler
 
 PORT = 8080
 Handler = http.server.BaseHTTPRequestHandler
-import json
-import socket
 
 storyData = {}
 dialogData = {}
@@ -212,20 +213,34 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         return
 
 
+def sendmail(from_who, to, msg, error):
+
+    s = smtplib.SMTP('localhost')
+    repr(error)
+    s.sendmail(from_who, [to],msg)
+    s.quit()
+
+
 def startServer():
     with socketserver.TCPServer(("", PORT), SimpleHTTPRequestHandler) as httpd:
         print("serving at port", PORT)
         httpd.serve_forever()
 
 
+if __name__ == '__main__':
+    ## getting the hostname by socket.gethostname() method
+    hostname = socket.gethostname()
+    ## getting the IP address using socket.gethostbyname() method
+    ip_address = socket.gethostbyname(hostname)
+    ## printing the hostname and ip_address
+    print(f"Hostname: {hostname}")
+    print(f"IP Address: {ip_address}")
 
+    try:
+        startServer()
 
-## getting the hostname by socket.gethostname() method
-hostname = socket.gethostname()
-## getting the IP address using socket.gethostbyname() method
-ip_address = socket.gethostbyname(hostname)
-## printing the hostname and ip_address
-print(f"Hostname: {hostname}")
-print(f"IP Address: {ip_address}")
+    except Exception as _ex:
+        print('Exception found')
+        emailHandler.sendEmail()
+       # sendmail('PythonWebServer', 'manuel.m.guimaraes@tecnico.ulisboa.pt','Error' + str(_ex))
 
-startServer()
